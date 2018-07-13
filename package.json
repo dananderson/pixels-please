@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "test": "./node_modules/.bin/mocha --reporter spec \"test/**/*.spec.js\"",
-    "docs": "node_modules/.bin/jsdoc -c jsdoc.json"
+    "docs": "rm -rf docs && node_modules/.bin/jsdoc -c jsdoc.json"
   },
   "dependencies": {
     "bindings": "~1.3.0",
