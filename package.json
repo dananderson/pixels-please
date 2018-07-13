@@ -1,0 +1,47 @@
+{
+  "name": "pixels-please",
+  "description": "Image processing library for multimedia applications.",
+  "keywords": [
+    "image",
+    "game",
+    "pixels",
+    "resize",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "tga",
+    "psd"
+  ],
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dananderson/pixels-please.git"
+  },
+  "author": "Daniel Anderson <dan.anderson.oss@gmail.com>",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "files": [
+    "lib/",
+    "src/",
+    "deps/",
+    "docs/",
+    "binding.gyp"
+  ],
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --reporter spec \"test/**/*.spec.js\"",
+    "docs": "node_modules/.bin/jsdoc -c jsdoc.json"
+  },
+  "dependencies": {
+    "bindings": "~1.3.0",
+    "napi-thread-safe-callback": "0.0.5",
+    "node-addon-api": "^1.2.0"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "docdash": "^0.4.0",
+    "jsdoc": "^3.5.5",
+    "mocha": "^5.1.1"
+  }
+}
