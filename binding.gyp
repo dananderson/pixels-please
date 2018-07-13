@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "pixels",
+      "target_name": "pixels-please",
       'include_dirs': [
         "<!@(node -p \"require('napi-thread-safe-callback').include\")",
         "<!@(node -p \"require('node-addon-api').include\")",

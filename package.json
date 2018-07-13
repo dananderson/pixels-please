@@ -33,8 +33,8 @@
     "docs": "rm -rf docs && node_modules/.bin/jsdoc -c jsdoc.json"
   },
   "dependencies": {
-    "bindings": "~1.3.0",
-    "napi-thread-safe-callback": "0.0.5",
+    "bindings": "^1.3.0",
+    "napi-thread-safe-callback": "^0.0.5",
     "node-addon-api": "^1.2.0"
   },
   "devDependencies": {
