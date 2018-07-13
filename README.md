@@ -47,11 +47,9 @@ Pipeline(imageFilename)
 
 |  File |  Project |  License |
 |---|---|---|
-| deps/stb_image.h | https://github.com/nothings/stb | MIT |
-| deps/stb_image_resize.h | https://github.com/nothings/stb | MIT  |
+| deps/stb_image.h <br> deps/stb_image_resize.h | https://github.com/nothings/stb | MIT |
 | deps/cptl_stl.h | https://github.com/vit-vit/CTPL | Apache 2.0 |
-| deps/nanosvg.h | https://github.com/memononen/nanosvg | zlib |
-| deps/nanosvgrast.h | https://github.com/memononen/nanosvg | zlib |
+| deps/nanosvg.h <br> deps/nanosvgrast.h | https://github.com/memononen/nanosvg | zlib |
 
 # License
 

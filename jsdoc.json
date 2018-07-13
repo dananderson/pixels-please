@@ -18,6 +18,9 @@
     "verbose": true
   },
   "templates": {
+    "default": {
+      "includeDate": false
+    },
     "cleverLinks": false,
     "monospaceLinks": false
   }
