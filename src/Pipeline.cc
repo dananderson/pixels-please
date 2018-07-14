@@ -8,9 +8,9 @@
 #include "Pipeline.h"
 
 #include "napi-thread-safe-callback.hpp"
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #define NANOSVG_ALL_COLOR_KEYWORDS
 #define NANOSVG_IMPLEMENTATION
@@ -308,7 +308,7 @@ void LoadPixels(const std::shared_ptr<ThreadSafeCallback> callback, const std::s
 
     // TODO: resize operations go here
 
-    if (targetPixelFormat != PIXEL_FORMAT_UNKNOWN) {
+    if (pixelFormat != targetPixelFormat && targetPixelFormat != PIXEL_FORMAT_UNKNOWN) {
         if (IsBigEndian()) {
             ConvertPixelsBE(pixels, width*height*requestedComponents, requestedComponents, targetPixelFormat);
         } else {
