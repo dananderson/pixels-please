@@ -1,0 +1,7 @@
+This product includes software from the following projects:
+
+Nano SVG (https://github.com/memononen/nanosvg), under the zlib License (see: deps/nanosvg.h, deps/nanosvgrast.h).
+
+stb (https://github.com/nothings/stb), under the MIT License (see: deps/stb_image.h, deps/stb_image_resize.h).
+
+CTPL (https://github.com/vit-vit/ctpl), under the Apache 2.0 License (see: deps/cptl_stl.h).

@@ -1,6 +1,6 @@
 {
   "name": "pixels-please",
-  "description": "Image processing library for multimedia applications.",
+  "description": "An image loading module for graphics applications.",
   "keywords": [
     "image",
     "game",

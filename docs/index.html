@@ -46,16 +46,24 @@
 
 
     <section class="readme">
-        <article><h1>Pixels, Please</h1><p>Image processing library for multimedia applications.</p>
-<h1>Install</h1><pre class="prettyprint source"><code>npm install pixels-please --save</code></pre><pre class="prettyprint source"><code>yarn add pixels-please</code></pre><p><strong>Pixels, Please</strong> contains native code. The installation target must be configured to use node-gyp.</p>
-<h1>Example</h1><pre class="prettyprint source lang-javascript"><code>const Pipeline = require('pixels-please');
+        <article><h1>Pixels, Please</h1><p>An image loading module for graphics applications.</p>
+<p><strong>Pixels, Please</strong> provides an asynchronous, non-blocking image processing pipeline that accepts an image file and outputs a Buffer of raw pixel 
+data. The pipeline is intended to support the use case of loading an image file into an OpenGL texture.</p>
+<pre class="prettyprint source"><code>npm install --save pixels-please</code></pre><pre class="prettyprint source"><code>yarn add pixels-please</code></pre><ul>
+<li>Installation requires node-gyp.</li>
+</ul>
+<h1>Examples</h1><pre class="prettyprint source lang-javascript"><code>const Pipeline = require('pixels-please');
 
 Pipeline(imageFilename)
     .bytes({format: 'argb'})
     .toBuffer()
     .then(buffer => {
         // ...
-    })</code></pre><h1>Image Support</h1><table>
+    });</code></pre><pre class="prettyprint source lang-javascript"><code>const Pipeline = require('pixels-please');
+
+let buffer = Pipeline(imageFilename)
+    .bytes({format: 'argb'})
+    .toBufferSync();</code></pre><h1>Image Formats</h1><table>
 <thead>
 <tr>
 <th>Extension</th>
@@ -64,7 +72,7 @@ Pipeline(imageFilename)
 </thead>
 <tbody>
 <tr>
-<td>.jpg, .jpeg</td>
+<td>.jpg</td>
 <td>baseline &amp; progressive (12 bpc/arithmetic not supported, same as stock IJG lib)</td>
 </tr>
 <tr>
@@ -81,7 +89,7 @@ Pipeline(imageFilename)
 </tr>
 <tr>
 <td>.psd</td>
-<td>composited view only, no extra channels, 8/16 bit-per-channel</td>
+<td>composited view only, no extra channels, 8 bit-per-channel</td>
 </tr>
 <tr>
 <td>.gif</td>
@@ -96,49 +104,16 @@ Pipeline(imageFilename)
 <td>None</td>
 </tr>
 <tr>
-<td>.ppm, .pgm</td>
+<td>.ppm</td>
+<td>binary only</td>
+</tr>
+<tr>
+<td>.pgm</td>
 <td>binary only</td>
 </tr>
 </tbody>
 </table>
-<h1>Credits</h1><p><strong>Pixels, Please</strong> includes source code from the following projects. </p>
-<table>
-<thead>
-<tr>
-<th>File</th>
-<th>Project</th>
-<th>License</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>deps/stb_image.h <br> deps/stb_image_resize.h</td>
-<td>https://github.com/nothings/stb</td>
-<td>MIT</td>
-</tr>
-<tr>
-<td>deps/cptl_stl.h</td>
-<td>https://github.com/vit-vit/CTPL</td>
-<td>Apache 2.0</td>
-</tr>
-<tr>
-<td>deps/nanosvg.h <br> deps/nanosvgrast.h</td>
-<td>https://github.com/memononen/nanosvg</td>
-<td>zlib</td>
-</tr>
-</tbody>
-</table>
-<h1>License</h1><p>MIT License</p>
-<p>Copyright (C) 2018 Daniel Anderson</p>
-<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
-files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following conditions:</p>
-<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
-<p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
-WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p></article>
+<h1>License</h1><p>Code is under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.</p></article>
     </section>
 
 
