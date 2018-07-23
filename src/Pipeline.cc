@@ -39,19 +39,211 @@ enum PixelFormat {
     PIXEL_FORMAT_UNKNOWN = -1
 };
 
-PixelFormat PixelFormatFromString(const std::string& str) {
-    if (str == "rgba") {
-        return PIXEL_FORMAT_RGBA;
-    } else if (str == "argb") {
-        return PIXEL_FORMAT_ARGB;
-    } else if (str == "abgr") {
-        return PIXEL_FORMAT_ABGR;
-    } else if (str == "bgra") {
-        return PIXEL_FORMAT_BGRA;
+std::string PixelFormatToString(const PixelFormat pixelFormat);
+PixelFormat PixelFormatFromString(const std::string& str);
+
+class ImageSource {
+    private:
+        FILE *file;
+        std::string filename;
+        std::string error;
+        NSVGimage *svg;
+
+        int width;
+        int height;
+        int channels;
+
+    public:
+        ImageSource(const std::string& filename) {
+            this->filename = filename;
+            this->file = nullptr;
+            this->svg = nullptr;
+            this->width = this->height = this->channels = 0;
+        }
+
+        bool Open() {
+            this->file = fopen((this->filename).c_str(), "rb");
+
+            if (this->file == nullptr) {
+                this->error = "File not found.";
+                return false;
+            }
+
+            if (stbi_info_from_file(this->file, &(this->width), &(this->height), &(this->channels)) != 1) {
+                // TODO: modify nanosvg to take a FILE*
+                    this->Close();
+                this->svg = nsvgParseFromFile((this->filename).c_str(), "px", 96);
+
+                if (this->svg == nullptr) {
+                    // TODO: modify nanosvg to report an error. stb error will do for now
+                    this->error = std::string("File read error: ").append(stbi_failure_reason());
+                    return false;
+                }
+
+                this->width = this->svg->width;
+                this->height = this->svg->height;
+                this->channels = 4;
+            }
+
+            return true;
+        }
+
+        void Close() {
+            if (this->file) {
+                fclose(this->file);
+                this->file = nullptr;
+            }
+
+            if (this->svg) {
+                nsvgDelete(this->svg);
+                this->svg = nullptr;
+            }
+        }
+
+        bool IsLoaded() const {
+            return this->file || this->svg;
+        }
+
+        bool IsSvg() const {
+            return this->svg != nullptr;
+        }
+
+        NSVGimage *GetSvg() const {
+            return this->svg;
+        }
+
+        int GetWidth() const {
+            return this->width;
+        }
+
+        int GetHeight() const {
+            return this->height;
+        }
+
+        int GetChannels() const {
+            return this->channels;
+        }
+
+        const std::string& GetError() const {
+            return this->error;
+        }
+
+        FILE *GetFile() const {
+            return this->file;
+        }
+};
+
+class Result {
+private:
+    bool final;
+
+public:
+    Result(bool final) {
+        this->final = final;
     }
 
-    return PIXEL_FORMAT_UNKNOWN;
-}
+    virtual ~Result() {
+
+    }
+
+    virtual Value ToValue(Env env) const = 0;
+
+    virtual std::string GetType() const = 0;
+
+    bool IsFinal() const {
+        return this->final;
+    }
+};
+
+class ErrorResult : public Result {
+    private:
+        std::string error;
+
+    public:
+        ErrorResult(const std::string& error) : Result(true) {
+            this->error = error;
+        }
+
+        Value ToValue(Env env) const {
+           Object obj = Napi::Object::New(env);
+
+           obj["message"] = String::New(env, this->error);
+
+           return obj;
+        }
+
+        std::string GetError() const {
+            return this->error;
+        }
+
+        std::string GetType() const {
+            return "error";
+        }
+};
+
+class HeaderResult : public Result {
+    protected:
+        int width;
+        int height;
+        int channels;
+
+    public:
+        HeaderResult(const int width, const int height, const int channels, const bool final) : Result(final) {
+            this->width = width;
+            this->height = height;
+            this->channels = channels;
+        }
+
+        Value ToValue(Env env) const {
+            auto header = Object::New(env);
+
+            header["width"] = Number::New(env, this->width);
+            header["height"] = Number::New(env, this->height);
+            header["channels"] = Number::New(env, this->channels);
+
+            return header;
+        }
+
+        std::string GetType() const {
+            return "header";
+        }
+};
+
+class BufferResult : public HeaderResult {
+    private:
+        PixelFormat format;
+        unsigned char * pixels;
+
+    public:
+        BufferResult(const int width, const int height, const int channels, const PixelFormat format, unsigned char * pixels)
+                : HeaderResult(width, height, channels, true) {
+            this->format = format;
+            this->pixels = pixels;
+        }
+
+        Value ToValue(Env env) const {
+            auto header = HeaderResult::ToValue(env).As<Object>();
+
+            header["format"] = String::New(env, PixelFormatToString(this->format));
+
+            auto buffer = Napi::Buffer<unsigned char>::New(
+                 env,
+                 this->pixels,
+                 this->width*this->height*this->channels,
+                 [](Env env, void* bufferData) {
+                     delete[] static_cast<unsigned char*>(bufferData);
+                 }
+            );
+
+            buffer.Set("header", header);
+
+            return buffer;
+        }
+
+        std::string GetType() const {
+            return "data";
+        }
+};
 
 std::string PixelFormatToString(const PixelFormat pixelFormat) {
     switch(pixelFormat) {
@@ -68,6 +260,20 @@ std::string PixelFormatToString(const PixelFormat pixelFormat) {
         default:
             return "";
     }
+}
+
+PixelFormat PixelFormatFromString(const std::string& str) {
+    if (str == "rgba") {
+        return PIXEL_FORMAT_RGBA;
+    } else if (str == "argb") {
+        return PIXEL_FORMAT_ARGB;
+    } else if (str == "abgr") {
+        return PIXEL_FORMAT_ABGR;
+    } else if (str == "bgra") {
+        return PIXEL_FORMAT_BGRA;
+    }
+
+    return PIXEL_FORMAT_UNKNOWN;
 }
 
 int GetChannels(const PixelFormat pixelFormat) {
@@ -91,82 +297,6 @@ int IsBigEndian() {
 
 bool CompletionFunction(const Value& val) {
     return val.As<Boolean>().Value();
-}
-
-void DispatchError(const std::shared_ptr<ThreadSafeCallback> callback, const std::string& message) {
-    callback->call<bool>([message](Napi::Env env, std::vector<napi_value>& args) {
-       Object obj = Napi::Object::New(env);
-
-       obj["message"] = String::New(env, message);
-
-       args.push_back(String::New(env, "error"));
-       args.push_back(obj);
-    },
-    CompletionFunction);
-}
-
-Object CreateHeader(Env env, const int width, const int height, const int channels) {
-    auto header = Object::New(env);
-
-    header["width"] = Number::New(env, width);
-    header["height"] = Number::New(env, height);
-    header["channels"] = Number::New(env, channels);
-
-    return header;
-}
-
-Object CreatePixelBufferHeader(Env env, const int width, const int height, const PixelFormat format) {
-    auto header = CreateHeader(env, width, height, GetChannels(format));
-
-    header["format"] = String::New(env, PixelFormatToString(format));
-
-    return header;
-}
-
-void DispatchHeader(
-        const std::shared_ptr<ThreadSafeCallback> callback,
-        const int width,
-        const int height,
-        const int channels) {
-    callback->call<bool>([width, height, channels](Napi::Env env, std::vector<napi_value>& args) {
-           args.push_back(String::New(env, "header"));
-           args.push_back(CreateHeader(env, width, height, channels));
-           },
-        CompletionFunction);
-}
-
-Object CreatePixelBuffer(
-        Env env,
-        const int width,
-        const int height,
-        const PixelFormat pixelFormat,
-        unsigned char *pixels) {
-    auto channels = GetChannels(pixelFormat);
-    auto buffer = Napi::Buffer<unsigned char>::New(
-         env,
-         pixels,
-         width*height*channels,
-         [](Env env, void* bufferData) {
-             delete[] static_cast<stbi_uc*>(bufferData);
-         }
-    );
-
-    buffer.Set("header", CreatePixelBufferHeader(env, width, height, pixelFormat));
-
-    return buffer;
-}
-
-void DispatchPixels(
-        const std::shared_ptr<ThreadSafeCallback> callback,
-        const int width,
-        const int height,
-        const PixelFormat format,
-        unsigned char * pixels) {
-    callback->call<bool>([width, height, format, pixels](Napi::Env env, std::vector<napi_value>& args) {
-            args.push_back(String::New(env, "data"));
-            args.push_back(CreatePixelBuffer(env, width, height, format, pixels));
-        },
-        CompletionFunction);
 }
 
 PixelFormat GetPixelFormatFromComponent(int component) {
@@ -269,46 +399,54 @@ void ConvertPixelsBE(unsigned char *bytes, int len, int bytesPerPixel, PixelForm
     }
 }
 
-void LoadPixels(const std::shared_ptr<ThreadSafeCallback> callback, const std::string& filename, const bool isHeaderQuery, const PixelFormat targetPixelFormat) {
-    auto fp = fopen(filename.c_str(), "rb");
+std::shared_ptr<Result> Pipeline(const std::shared_ptr<ImageSource> imageSource, const bool isHeaderQuery, const PixelFormat targetPixelFormat) {
+    if (!imageSource->IsLoaded()) {
+        if (!imageSource->Open() || !imageSource->IsLoaded()) {
+            return std::shared_ptr<Result>(new ErrorResult(imageSource->GetError()));
+        }
 
-    if (fp == NULL) {
-        DispatchError(callback, "File not found.");
-        return;
+        return std::shared_ptr<Result>(new HeaderResult(imageSource->GetWidth(), imageSource->GetHeight(), 4, isHeaderQuery));
     }
 
-    auto width = 0;
-    auto height = 0;
-    auto components = 0;
-
-    if (stbi_info_from_file(fp, &width, &height, &components) != 1) {
-        DispatchError(callback, std::string("File read error: ").append(stbi_failure_reason()));
-        fclose(fp);
-        return;
-    }
-
-    if (callback != nullptr) {
-        DispatchHeader(callback, width, height, 4);
-    }
-
-    if (isHeaderQuery) {
-        return;
-    }
-
-    // TODO: Support 24-bit RGB. Until then, force full 32-bit.
+    auto width = imageSource->GetWidth();
+    auto height = imageSource->GetHeight();
     auto pixelFormat = PIXEL_FORMAT_RGBA;
     auto requestedComponents = 4;
-    auto pixels = stbi_load_from_file(fp, &width, &height, &components, requestedComponents);
+    unsigned char *pixels = nullptr;
 
-    if (pixels == NULL) {
-        DispatchError(callback, std::string("File load error: ").append(stbi_failure_reason()));
-        fclose(fp);
-        return;
+    if (imageSource->IsSvg()) {
+        if (width <= 0 || height <= 0) {
+            return std::shared_ptr<Result>(new ErrorResult("Cannot load an SVG without a width and height."));
+        }
+
+        auto rast = nsvgCreateRasterizer();
+
+        if (rast == nullptr) {
+            return std::shared_ptr<Result>(new ErrorResult(std::string("Failed to create rasterizer SVG.")));
+        }
+
+        pixels = new unsigned char[width*height*requestedComponents];
+
+        if (pixels == nullptr) {
+            nsvgDeleteRasterizer(rast);
+            return std::shared_ptr<Result>(new ErrorResult(std::string("Failed to allocate memory for SVG.")));
+        }
+
+        nsvgRasterize(rast, imageSource->GetSvg(), 0, 0, 1, pixels, width, height, width*requestedComponents);
+        nsvgDeleteRasterizer(rast);
+    } else {
+        int components;
+        
+        pixels = stbi_load_from_file(imageSource->GetFile(), &width, &height, &components, requestedComponents);
+
+        if (pixels == nullptr) {
+            return std::shared_ptr<Result>(new ErrorResult(std::string("File load error: ").append(stbi_failure_reason())));
+        }
     }
 
     // TODO: resize operations go here
 
-    if (pixelFormat != targetPixelFormat && targetPixelFormat != PIXEL_FORMAT_UNKNOWN) {
+    if (targetPixelFormat != PIXEL_FORMAT_UNKNOWN) {
         if (IsBigEndian()) {
             ConvertPixelsBE(pixels, width*height*requestedComponents, requestedComponents, targetPixelFormat);
         } else {
@@ -317,11 +455,7 @@ void LoadPixels(const std::shared_ptr<ThreadSafeCallback> callback, const std::s
         pixelFormat = targetPixelFormat;
     }
 
-    if (callback != nullptr) {
-        DispatchPixels(callback, width, height, pixelFormat, pixels);
-    }
-    
-    fclose(fp);
+    return std::shared_ptr<Result>(new BufferResult(width, height, GetChannels(pixelFormat), pixelFormat, pixels));
 }
 
 void LoadPipeline(const CallbackInfo& info) {
@@ -335,11 +469,25 @@ void LoadPipeline(const CallbackInfo& info) {
     auto pixelFormat = PixelFormatFromString(pixelFormatStr);
 
     GetThreadPool().push([callback, filename, isHeaderQuery, pixelFormat](int id) {
-        LoadPixels(callback, filename, isHeaderQuery, pixelFormat);
+        std::shared_ptr<ImageSource> imageSource = std::shared_ptr<ImageSource>(new ImageSource(filename));
+
+        while (true) {
+            std::shared_ptr<Result> result = Pipeline(imageSource, isHeaderQuery, pixelFormat);
+
+            callback->call<bool>([result](Napi::Env env, std::vector<napi_value>& args) {
+                args.push_back(String::New(env, result->GetType()));
+                args.push_back(result->ToValue(env));
+            },
+            CompletionFunction);
+
+            if (result->IsFinal()) {
+                break;
+            }
+        }
+
+        imageSource->Close();
     });
 }
-
-// TODO: Refactor LoadPipeline and LoadPipelineSync to eliminate duplicate logic.
 
 Value LoadPipelineSync(const CallbackInfo& info) {
     // Assume parameters are checked in javascript.
@@ -352,40 +500,25 @@ Value LoadPipelineSync(const CallbackInfo& info) {
     auto targetPixelFormatStr = request.Get("outputOptions").As<Object>().Get("format").As<String>().Utf8Value();
     auto targetPixelFormat = PixelFormatFromString(targetPixelFormatStr);
 
-    int width;
-    int height;
-    int components;
-    int requestedComponents = 4;
+    std::shared_ptr<ImageSource> imageSource = std::shared_ptr<ImageSource>(new ImageSource(filename));
+    Value returnValue;
 
-    if (isHeaderQuery) {
-        if (stbi_info(filename.c_str(), &width, &height, &components) != 1) {
-            Napi::Error::New(env, std::string("File read error: ").append(stbi_failure_reason())).ThrowAsJavaScriptException();
+    while (true) {
+        std::shared_ptr<Result> result = Pipeline(imageSource, isHeaderQuery, targetPixelFormat);
+
+        returnValue = result->ToValue(env);
+
+        if (result->GetType() == "error") {
+            Napi::Error::New(env, std::static_pointer_cast<ErrorResult>(result)->GetError()).ThrowAsJavaScriptException();
             return env.Null();
         }
 
-        // TODO: Support 24-bit RGB. Until then, force full 32-bit.
-        return CreateHeader(env, width, height, 4);
-    }
-
-    auto pixels = stbi_load(filename.c_str(), &width, &height, &components, requestedComponents);
-    auto pixelFormat = PIXEL_FORMAT_RGBA;
-
-    if (pixels == NULL) {
-        Napi::Error::New(env, "Failed to load image file").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    // TODO: resize operations go here
-
-    if (targetPixelFormat != PIXEL_FORMAT_UNKNOWN) {
-        if (IsBigEndian()) {
-            ConvertPixelsBE(pixels, width*height*requestedComponents, requestedComponents, targetPixelFormat);
-        } else {
-            ConvertPixelsLE(pixels, width*height*requestedComponents, requestedComponents, targetPixelFormat);
+        if (result->IsFinal()) {
+            break;
         }
-
-        pixelFormat = targetPixelFormat;
     }
 
-    return CreatePixelBuffer(env, width, height, pixelFormat, pixels);
+    imageSource->Close();
+
+    return returnValue;
 }
