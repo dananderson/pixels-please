@@ -22,7 +22,7 @@
 <label for="nav-trigger" class="overlay"></label>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Pipeline.html">Pipeline</a><ul class='methods'><li data-type='method'><a href="Pipeline.html#bytes">bytes</a></li><li data-type='method'><a href="Pipeline.html#toBuffer">toBuffer</a></li><li data-type='method'><a href="Pipeline.html#toBufferSync">toBufferSync</a></li><li data-type='method'><a href="Pipeline.html#toHeader">toHeader</a></li><li data-type='method'><a href="Pipeline.html#toHeaderSync">toHeaderSync</a></li></ul></li></ul><h3><a href="global.html">Global</a></h3>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Pipeline.html">Pipeline</a><ul class='methods'><li data-type='method'><a href="Pipeline.html#bytes">bytes</a></li><li data-type='method'><a href="Pipeline.html#contain">contain</a></li><li data-type='method'><a href="Pipeline.html#filter">filter</a></li><li data-type='method'><a href="Pipeline.html#fit">fit</a></li><li data-type='method'><a href="Pipeline.html#ignoreAspectRatio">ignoreAspectRatio</a></li><li data-type='method'><a href="Pipeline.html#resize">resize</a></li><li data-type='method'><a href="Pipeline.html#toBuffer">toBuffer</a></li><li data-type='method'><a href="Pipeline.html#toBufferSync">toBufferSync</a></li><li data-type='method'><a href="Pipeline.html#toHeader">toHeader</a></li><li data-type='method'><a href="Pipeline.html#toHeaderSync">toHeaderSync</a></li></ul></li></ul><h3><a href="global.html">Global</a></h3>
 </nav>
 
 <div id="main">
@@ -69,10 +69,18 @@ function Pipeline(source) {
 
     this.request = {
         source,
+
         output: 'bytes',
         outputOptions: {
             format: 'keep'
-        }
+        },
+
+        resizeWidth: 0,
+        resizeHeight: 0,
+        resizeFilter: 'gaussian',
+        resizeConstraint: 'fit',
+        resizeDisableDecoderScaling: false,
+        resizeIgnoreAspectRatio: false,
     };
     
     return this;

@@ -22,7 +22,7 @@
 <label for="nav-trigger" class="overlay"></label>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Pipeline.html">Pipeline</a><ul class='methods'><li data-type='method'><a href="Pipeline.html#bytes">bytes</a></li><li data-type='method'><a href="Pipeline.html#toBuffer">toBuffer</a></li><li data-type='method'><a href="Pipeline.html#toBufferSync">toBufferSync</a></li><li data-type='method'><a href="Pipeline.html#toHeader">toHeader</a></li><li data-type='method'><a href="Pipeline.html#toHeaderSync">toHeaderSync</a></li></ul></li></ul><h3><a href="global.html">Global</a></h3>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Pipeline.html">Pipeline</a><ul class='methods'><li data-type='method'><a href="Pipeline.html#bytes">bytes</a></li><li data-type='method'><a href="Pipeline.html#contain">contain</a></li><li data-type='method'><a href="Pipeline.html#filter">filter</a></li><li data-type='method'><a href="Pipeline.html#fit">fit</a></li><li data-type='method'><a href="Pipeline.html#ignoreAspectRatio">ignoreAspectRatio</a></li><li data-type='method'><a href="Pipeline.html#resize">resize</a></li><li data-type='method'><a href="Pipeline.html#toBuffer">toBuffer</a></li><li data-type='method'><a href="Pipeline.html#toBufferSync">toBufferSync</a></li><li data-type='method'><a href="Pipeline.html#toHeader">toHeader</a></li><li data-type='method'><a href="Pipeline.html#toHeaderSync">toHeaderSync</a></li></ul></li></ul><h3><a href="global.html">Global</a></h3>
 </nav>
 
 <div id="main">
@@ -272,7 +272,7 @@ number of cpu cores on the system. Setting threads to 0 will reset the pool size
 
     
 
-    <h4 class="name" id="bytes"><span class="type-signature"></span>bytes<span class="signature">(options<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Image}</span></h4>
+    <h4 class="name" id="bytes"><span class="type-signature"></span>bytes<span class="signature">(options<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {<a href="Pipeline.html">Pipeline</a>}</span></h4>
 
     
 
@@ -470,7 +470,700 @@ number of cpu cores on the system. Setting threads to 0 will reset the pool size
     </dt>
     <dd>
         
-<span class="param-type">Image</span>
+<span class="param-type"><a href="Pipeline.html">Pipeline</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="contain"><span class="type-signature"></span>contain<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="Pipeline.html">Pipeline</a>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="resize.js.html">resize.js</a>, <a href="resize.js.html#line45">line 45</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Resize an image only if it's width or height are larger that the resize bounding box.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Pipeline.html">Pipeline</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="filter"><span class="type-signature"></span>filter<span class="signature">(filter, options)</span><span class="type-signature"> &rarr; {<a href="Pipeline.html">Pipeline</a>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="resize.js.html">resize.js</a>, <a href="resize.js.html#line67">line 67</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>The resize algorithm to use.</p>
+<p>Note, some image decoders support scaling during decoding (such as SVG). If available, this will be the preferred
+resizing strategy. If disableDecoderScaling is specified in options, the image will be loaded at it's normal
+size and resized with this filter.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>filter</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#Filter">Filter</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Resize filter algorithm.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>disableDecoderScaling</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Force the resize operation to use the specified resize filter.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Pipeline.html">Pipeline</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="fit"><span class="type-signature"></span>fit<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="Pipeline.html">Pipeline</a>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="resize.js.html">resize.js</a>, <a href="resize.js.html#line56">line 56</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Resize an image to fill as much of the resize bounding box as possible.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Pipeline.html">Pipeline</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="ignoreAspectRatio"><span class="type-signature"></span>ignoreAspectRatio<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="Pipeline.html">Pipeline</a>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="resize.js.html">resize.js</a>, <a href="resize.js.html#line91">line 91</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Ignore image aspect ratio when resizing.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Pipeline.html">Pipeline</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="resize"><span class="type-signature"></span>resize<span class="signature">(width, height)</span><span class="type-signature"> &rarr; {<a href="Pipeline.html">Pipeline</a>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="resize.js.html">resize.js</a>, <a href="resize.js.html#line19">line 19</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Resize an image.</p>
+<p>The width and height may not be the final output dimensions, but an upper bound of a resize operation. The width
+and height create a resizing bounding box.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>width</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Maximum output width.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>height</code></td>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Maximum output height.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Pipeline.html">Pipeline</a></span>
 
 
     </dd>
