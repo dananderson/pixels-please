@@ -70,13 +70,29 @@ class ImageSource {
             }
 
             if (stbi_info_from_file(this->file, &(this->width), &(this->height), &(this->channels)) != 1) {
-                // TODO: modify nanosvg to take a FILE*
-                    this->Close();
+                static auto bufferSize = 4096;
+                char buffer[bufferSize];
+                size_t bytesRead;
+
+                bytesRead = fread(buffer, 1, bufferSize - 1, this->file);
+                fseek(this->file, 0, SEEK_SET);
+                
+                if (bytesRead) {
+                    buffer[bufferSize - 1] = '\0';
+
+                    if (strstr(buffer, "<svg") == nullptr) {
+                        this->error = std::string("File read error: ").append(stbi_failure_reason());
+                        return false;
+                    }
+                } else {
+                    this->error = std::string("File read error: ").append(stbi_failure_reason());
+                    return false;
+                }
+
                 this->svg = nsvgParseFromFile((this->filename).c_str(), "px", 96);
 
                 if (this->svg == nullptr) {
-                    // TODO: modify nanosvg to report an error. stb error will do for now
-                    this->error = std::string("File read error: ").append(stbi_failure_reason());
+                    this->error = std::string("Failed to parse SVG.");
                     return false;
                 }
 
