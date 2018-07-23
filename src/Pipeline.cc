@@ -30,6 +30,37 @@
 
 using namespace Napi;
 
+// Constants
+
+#define HEADER_WIDTH "width"
+#define HEADER_HEIGHT "height"
+#define HEADER_CHANNELS "channels"
+#define HEADER_FORMAT "format"
+#define HEADER_EVENT_TYPE "header"
+
+#define ERROR_MESSAGE "message"
+#define ERROR_EVENT_TYPE "error"
+
+#define BUFFER_HEADER "header"
+#define BUFFER_EVENT_TYPE "data"
+
+#define REQUEST_OUTPUT "outputOptions"
+#define REQUEST_FORMAT "format"
+#define REQUEST_SOURCE "source"
+#define REQUEST_WIDTH "resizeWidth"
+#define REQUEST_HEIGHT "resizeHeight"
+#define REQUEST_FILTER "resizeFilter"
+#define REQUEST_CONSTRAINT "resizeConstraint"
+#define REQUEST_DISABLE_DECODER_SCALING "resizeDisableDecoderScaling"
+#define REQUEST_IGNORE_ASPECT_RATIO "resizeIgnoreAspectRatio"
+
+#define FILTER_BOX "box"
+#define FILTER_TENT "tent"
+#define FILTER_GAUSSIAN "gaussian"
+
+#define CONSTRAINT_CONTAIN "contain"
+#define CONSTRAINT_FIT "fit"
+
 enum PixelFormat {
     PIXEL_FORMAT_RGBA = 0,
     PIXEL_FORMAT_ARGB = 1,
@@ -39,8 +70,29 @@ enum PixelFormat {
     PIXEL_FORMAT_UNKNOWN = -1
 };
 
+// Exported Functions
+
+void LoadPipeline(const CallbackInfo& info);
+Value LoadPipelineSync(const CallbackInfo& info);
+
+// Internal Functions
+
+class ImageSource;
+class Request;
+class Result;
+
 std::string PixelFormatToString(const PixelFormat pixelFormat);
 PixelFormat PixelFormatFromString(const std::string& str);
+int GetChannels(const PixelFormat pixelFormat);
+int IsBigEndian();
+bool CompletionFunction(const Value& val);
+PixelFormat GetPixelFormatFromComponent(int component);
+void ConvertPixelsLE(unsigned char *bytes, int len, int bytesPerPixel, PixelFormat format);
+void ConvertPixelsBE(unsigned char *bytes, int len, int bytesPerPixel, PixelFormat format);
+std::shared_ptr<Result> Pipeline(const std::shared_ptr<Request> request, const std::shared_ptr<ImageSource> imageSource);
+float ScaleFactor(const int source, const int dest);
+
+// Internal Classes
 
 class ImageSource {
     private:
@@ -183,7 +235,7 @@ class ErrorResult : public Result {
         Value ToValue(Env env) const {
            Object obj = Napi::Object::New(env);
 
-           obj["message"] = String::New(env, this->error);
+           obj[ERROR_MESSAGE] = String::New(env, this->error);
 
            return obj;
         }
@@ -193,7 +245,7 @@ class ErrorResult : public Result {
         }
 
         std::string GetType() const {
-            return "error";
+            return ERROR_EVENT_TYPE;
         }
 };
 
@@ -213,15 +265,15 @@ class HeaderResult : public Result {
         Value ToValue(Env env) const {
             auto header = Object::New(env);
 
-            header["width"] = Number::New(env, this->width);
-            header["height"] = Number::New(env, this->height);
-            header["channels"] = Number::New(env, this->channels);
+            header[HEADER_WIDTH] = Number::New(env, this->width);
+            header[HEADER_HEIGHT] = Number::New(env, this->height);
+            header[HEADER_CHANNELS] = Number::New(env, this->channels);
 
             return header;
         }
 
         std::string GetType() const {
-            return "header";
+            return HEADER_EVENT_TYPE;
         }
 };
 
@@ -240,24 +292,228 @@ class BufferResult : public HeaderResult {
         Value ToValue(Env env) const {
             auto header = HeaderResult::ToValue(env).As<Object>();
 
-            header["format"] = String::New(env, PixelFormatToString(this->format));
+            header[HEADER_FORMAT] = String::New(env, PixelFormatToString(this->format));
 
             auto buffer = Napi::Buffer<unsigned char>::New(
                  env,
                  this->pixels,
                  this->width*this->height*this->channels,
                  [](Env env, void* bufferData) {
-                     delete[] static_cast<unsigned char*>(bufferData);
+                     free(bufferData);
                  }
             );
 
-            buffer.Set("header", header);
+            buffer.Set(BUFFER_HEADER, header);
 
             return buffer;
         }
 
         std::string GetType() const {
-            return "data";
+            return BUFFER_EVENT_TYPE;
+        }
+};
+
+class Request {
+    private:
+        std::string filename;
+        PixelFormat format;
+        bool isHeaderQuery;
+
+        int width;
+        int height;
+        std::string filter;
+        std::string constraint;
+        bool disableDecoderScaling;
+        bool ignoreAspectRatio;
+
+    public:
+        Request(const CallbackInfo& info) {
+            // Assume arguments are validated in javascript.
+            auto request = info[0].As<Object>();
+            auto format = request.Get(REQUEST_OUTPUT).As<Object>().Get(REQUEST_FORMAT).As<String>().Utf8Value();
+
+            this->filename = request.Get(REQUEST_SOURCE).As<String>().Utf8Value();
+            this->format = PixelFormatFromString(format);
+            this->width = request.Get(REQUEST_WIDTH).As<Number>().Int32Value();
+            this->height = request.Get(REQUEST_HEIGHT).As<Number>().Int32Value();
+            this->filter = request.Get(REQUEST_FILTER).As<String>().Utf8Value();
+            this->constraint = request.Get(REQUEST_CONSTRAINT).As<String>().Utf8Value();
+            this->disableDecoderScaling = request.Get(REQUEST_DISABLE_DECODER_SCALING).As<Boolean>().Value();
+            this->ignoreAspectRatio = request.Get(REQUEST_IGNORE_ASPECT_RATIO).As<Boolean>().Value();
+
+            this->isHeaderQuery = info[1].As<Boolean>().Value();
+        }
+
+        const std::string& GetFilename() const {
+            return this->filename;
+        }
+
+        PixelFormat GetFormat() const {
+            return this->format;
+        }
+
+        bool IsHeaderQuery() const {
+            return this->isHeaderQuery;
+        }
+
+        int GetWidth() const {
+            return this->width;
+        }
+
+        int GetHeight() const {
+            return this->height;
+        }
+
+        const std::string& GetFilter() const {
+            return this->filter;
+        }
+
+        const std::string& GetConstraint() const {
+            return this->constraint;
+        }
+
+        bool IsDisableDecoderScaling() const {
+            return this->disableDecoderScaling;
+        }
+
+        bool IsIgnoreAspectRatio() const {
+            return this->ignoreAspectRatio;
+        }
+};
+
+class Canvas {
+    private:
+        float scaleX;
+        float scaleY;
+        int width;
+        int height;
+        stbir_filter filter;
+        bool resize;
+
+    public:
+        Canvas(const std::shared_ptr<Request> request, const int sourceWidth, const int sourceHeight) {
+            auto filter = request->GetFilter();
+
+            if (filter == FILTER_BOX) {
+                this->filter = STBIR_FILTER_BOX;
+            } else if (filter == FILTER_TENT) {
+                this->filter = STBIR_FILTER_TRIANGLE;
+            } else if (filter == FILTER_GAUSSIAN) {
+                this->filter = STBIR_FILTER_CUBICBSPLINE;
+            } else {
+                this->filter = STBIR_FILTER_DEFAULT;
+            }
+
+            auto destWidth = request->GetWidth();
+            auto destHeight = request->GetHeight();
+
+            this->resize = (destWidth > 0 && destHeight > 0) && !(sourceWidth == destWidth && sourceHeight == destHeight);
+
+            // TODO: simplify if new constraints are added..
+            if (this->resize) {
+                if (request->GetConstraint() == "contain") {
+                    if (sourceWidth <= destWidth && sourceHeight <= destHeight) {
+                        // smaller than the bounding box. no resizing required.
+                        this->width = sourceWidth;
+                        this->height = sourceHeight;
+                        this->scaleX = 1;
+                        this->scaleY = 1;
+                        this->resize = false;
+                    } else if (request->IsIgnoreAspectRatio()) {
+                        if (sourceWidth < destWidth) {
+                            // width fits, squish height
+                            this->width = sourceWidth;
+                            this->height = destHeight;
+                            this->scaleX = 1;
+                            this->scaleY = ScaleFactor(sourceHeight, destHeight);
+                        } else if (sourceHeight < destHeight) {
+                            // height fits, squish width
+                            this->width = destWidth;
+                            this->height = sourceHeight;
+                            this->scaleX = ScaleFactor(sourceWidth, destWidth);
+                            this->scaleY = 1;
+                        }
+                        else {
+                            // squish both dimensions
+                            this->width = destWidth;
+                            this->height = destHeight;
+                            this->scaleX = ScaleFactor(sourceWidth, destWidth);
+                            this->scaleY = ScaleFactor(sourceHeight, destHeight);
+                        }
+                    } else {
+                        // scale by aspect ratio
+                        auto aspectRatio = (float)sourceWidth / (float)sourceHeight;
+
+                        if (sourceWidth == sourceHeight) {
+                            this->width = destWidth;
+                            this->height = destHeight;
+                        } else if (sourceWidth > sourceHeight) {
+                            this->height = (int)((float)(destWidth) / aspectRatio);
+                            this->width = destWidth;
+                        } else {
+                            this->height = destHeight;
+                            this->width = (int)((float)(destHeight) * aspectRatio);
+                        }
+
+                        this->scaleX = ScaleFactor(sourceWidth, destWidth);
+                        this->scaleY = ScaleFactor(sourceHeight, destHeight);
+                    }
+                } else { // "fit"
+                    if (request->IsIgnoreAspectRatio()) {
+                        // stretch to fit
+                        this->width = destWidth;
+                        this->height = destHeight;
+                        this->scaleX = ScaleFactor(sourceWidth, destWidth);
+                        this->scaleY = ScaleFactor(sourceHeight, destHeight);
+                    } else {
+                        // scale by aspect ratio (same as contain..)
+                        auto aspectRatio = (float)sourceWidth / (float)sourceHeight;
+
+                        if (sourceWidth == sourceHeight) {
+                            this->width = destWidth;
+                            this->height = destHeight;
+                        } else if (sourceWidth > sourceHeight) {
+                            this->height = (int)((float)(destWidth) / aspectRatio);
+                            this->width = destWidth;
+                        } else {
+                            this->height = destHeight;
+                            this->width = (int)((float)(destHeight) * aspectRatio);
+                        }
+
+                        this->scaleX = ScaleFactor(sourceWidth, destWidth);
+                        this->scaleY = ScaleFactor(sourceHeight, destHeight);
+                    }
+                }
+            } else {
+                this->width = sourceWidth;
+                this->height = sourceHeight;
+                this->scaleX = 1;
+                this->scaleY = 1;
+            }
+        }
+
+        float GetScaleX() const {
+            return this->scaleX;
+        }
+
+        float GetScaleY() const {
+            return this->scaleY;
+        }
+
+        int GetWidth() const {
+            return this->width;
+        }
+
+        int GetHeight() const {
+            return this->height;
+        }
+
+        stbir_filter GetStbFilter() const {
+            return this->filter;
+        }
+
+        bool IsResize() const {
+            return this->resize;
         }
 };
 
@@ -415,13 +671,18 @@ void ConvertPixelsBE(unsigned char *bytes, int len, int bytesPerPixel, PixelForm
     }
 }
 
-std::shared_ptr<Result> Pipeline(const std::shared_ptr<ImageSource> imageSource, const bool isHeaderQuery, const PixelFormat targetPixelFormat) {
+float ScaleFactor(const int source, const int dest) {
+    return 1.f + (((float)dest - (float)source) / (float)source);
+}
+
+std::shared_ptr<Result> Pipeline(const std::shared_ptr<Request> request, const std::shared_ptr<ImageSource> imageSource) {
+    // Header.
     if (!imageSource->IsLoaded()) {
         if (!imageSource->Open() || !imageSource->IsLoaded()) {
             return std::shared_ptr<Result>(new ErrorResult(imageSource->GetError()));
         }
 
-        return std::shared_ptr<Result>(new HeaderResult(imageSource->GetWidth(), imageSource->GetHeight(), 4, isHeaderQuery));
+        return std::shared_ptr<Result>(new HeaderResult(imageSource->GetWidth(), imageSource->GetHeight(), 4, request->IsHeaderQuery()));
     }
 
     auto width = imageSource->GetWidth();
@@ -429,7 +690,9 @@ std::shared_ptr<Result> Pipeline(const std::shared_ptr<ImageSource> imageSource,
     auto pixelFormat = PIXEL_FORMAT_RGBA;
     auto requestedComponents = 4;
     unsigned char *pixels = nullptr;
+    auto canvas = std::shared_ptr<Canvas>(new Canvas(request, width, height));
 
+    // Load Image Data.
     if (imageSource->IsSvg()) {
         if (width <= 0 || height <= 0) {
             return std::shared_ptr<Result>(new ErrorResult("Cannot load an SVG without a width and height."));
@@ -441,14 +704,28 @@ std::shared_ptr<Result> Pipeline(const std::shared_ptr<ImageSource> imageSource,
             return std::shared_ptr<Result>(new ErrorResult(std::string("Failed to create rasterizer SVG.")));
         }
 
-        pixels = new unsigned char[width*height*requestedComponents];
+        float scaleX;
+        float scaleY;
+
+        if (request->IsDisableDecoderScaling()) {
+            scaleX = 1;
+            scaleY = 1;
+        } else {
+            scaleX = canvas->GetScaleX();
+            scaleY = canvas->GetScaleY();
+            width = canvas->GetWidth();
+            height = canvas->GetHeight();
+            pixels = (unsigned char *)malloc(width*height*requestedComponents);
+        }
+
+        pixels = (unsigned char *)malloc(width*height*requestedComponents);
 
         if (pixels == nullptr) {
             nsvgDeleteRasterizer(rast);
             return std::shared_ptr<Result>(new ErrorResult(std::string("Failed to allocate memory for SVG.")));
         }
 
-        nsvgRasterize(rast, imageSource->GetSvg(), 0, 0, 1, pixels, width, height, width*requestedComponents);
+        nsvgRasterizeFull(rast, imageSource->GetSvg(), 0, 0, scaleX, scaleY, pixels, width, height, width*requestedComponents);
         nsvgDeleteRasterizer(rast);
     } else {
         int components;
@@ -460,35 +737,69 @@ std::shared_ptr<Result> Pipeline(const std::shared_ptr<ImageSource> imageSource,
         }
     }
 
-    // TODO: resize operations go here
+    // Resize.
+    if (canvas->IsResize() && !(imageSource->IsSvg() && !request->IsDisableDecoderScaling())) {
+        auto alphaChannelIndex = IsBigEndian() ? 3 : 0;
+        auto output = (unsigned char *)malloc(canvas->GetWidth()*canvas->GetHeight()*requestedComponents);
 
-    if (targetPixelFormat != PIXEL_FORMAT_UNKNOWN) {
-        if (IsBigEndian()) {
-            ConvertPixelsBE(pixels, width*height*requestedComponents, requestedComponents, targetPixelFormat);
-        } else {
-            ConvertPixelsLE(pixels, width*height*requestedComponents, requestedComponents, targetPixelFormat);
+        auto result = stbir_resize_uint8_generic(
+            // input
+            pixels,
+            width,
+            height,
+            0,
+            // output
+            output,
+            canvas->GetWidth(),
+            canvas->GetHeight(),
+            0,
+            // channels
+            requestedComponents,
+            alphaChannelIndex,
+            // settings
+            0,
+            STBIR_EDGE_CLAMP,
+            canvas->GetStbFilter(),
+            STBIR_COLORSPACE_LINEAR,
+            // context
+            nullptr
+        );
+
+        if (!result) {
+            free(pixels);
+            free(output);
+            return std::shared_ptr<Result>(new ErrorResult(std::string("Failed to resize the image.")));
         }
-        pixelFormat = targetPixelFormat;
+
+        free(pixels);
+        pixels = output;
+        width = canvas->GetWidth();
+        height = canvas->GetHeight();
+    }
+
+    // Colorspace.
+    if (request->GetFormat() != PIXEL_FORMAT_UNKNOWN) {
+        if (IsBigEndian()) {
+            ConvertPixelsBE(pixels, width*height*requestedComponents, requestedComponents, request->GetFormat());
+        } else {
+            ConvertPixelsLE(pixels, width*height*requestedComponents, requestedComponents, request->GetFormat());
+        }
+        pixelFormat = request->GetFormat();
     }
 
     return std::shared_ptr<Result>(new BufferResult(width, height, GetChannels(pixelFormat), pixelFormat, pixels));
 }
 
 void LoadPipeline(const CallbackInfo& info) {
-    // Assume parameters are checked in javascript.
-    auto request = info[0].As<Object>();
-    auto isHeaderQuery = info[1].As<Boolean>().Value();
+    // Assume arguments are validated in javascript.
+    auto request = std::shared_ptr<Request>(new Request(info));
     auto callback = std::make_shared<ThreadSafeCallback>(info[2].As<Function>());
 
-    auto filename = request.Get("source").As<String>().Utf8Value();
-    auto pixelFormatStr = request.Get("outputOptions").As<Object>().Get("format").As<String>().Utf8Value();
-    auto pixelFormat = PixelFormatFromString(pixelFormatStr);
-
-    GetThreadPool().push([callback, filename, isHeaderQuery, pixelFormat](int id) {
-        std::shared_ptr<ImageSource> imageSource = std::shared_ptr<ImageSource>(new ImageSource(filename));
+    GetThreadPool().push([request, callback](int id) {
+        auto imageSource = std::shared_ptr<ImageSource>(new ImageSource(request->GetFilename()));
 
         while (true) {
-            std::shared_ptr<Result> result = Pipeline(imageSource, isHeaderQuery, pixelFormat);
+            std::shared_ptr<Result> result = Pipeline(request, imageSource);
 
             callback->call<bool>([result](Napi::Env env, std::vector<napi_value>& args) {
                 args.push_back(String::New(env, result->GetType()));
@@ -506,21 +817,14 @@ void LoadPipeline(const CallbackInfo& info) {
 }
 
 Value LoadPipelineSync(const CallbackInfo& info) {
-    // Assume parameters are checked in javascript.
+    // Assume arguments are validated in javascript.
     auto env = info.Env();
-    auto request = info[0].As<Object>();
-    auto isHeaderQuery = info[1].As<Boolean>().Value();
-
-    auto filenameValue = request.Get("source").As<String>();
-    auto filename = filenameValue.Utf8Value();
-    auto targetPixelFormatStr = request.Get("outputOptions").As<Object>().Get("format").As<String>().Utf8Value();
-    auto targetPixelFormat = PixelFormatFromString(targetPixelFormatStr);
-
-    std::shared_ptr<ImageSource> imageSource = std::shared_ptr<ImageSource>(new ImageSource(filename));
+    auto request = std::shared_ptr<Request>(new Request(info));
+    auto imageSource = std::shared_ptr<ImageSource>(new ImageSource(request->GetFilename()));
     Value returnValue;
 
     while (true) {
-        std::shared_ptr<Result> result = Pipeline(imageSource, isHeaderQuery, targetPixelFormat);
+        std::shared_ptr<Result> result = Pipeline(request, imageSource);
 
         returnValue = result->ToValue(env);
 
