@@ -106,7 +106,6 @@ function checkHeader(header) {
 function checkSvgHeader(header) {
     assert.equal(header.width, 100);
     assert.equal(header.height, 100);
-    console.log(header.channels);
     assert.equal(header.channels, 4);
 }
 
