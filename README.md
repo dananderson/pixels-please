@@ -2,8 +2,18 @@
 
 An image loading module for graphics applications.
 
-**Pixels, Please** provides an asynchronous, non-blocking image processing pipeline that accepts an image file and outputs a Buffer of raw pixel 
-data. The pipeline is intended to support the use case of loading an image file into an OpenGL texture.
+* Supports many popular image formats.
+* Image resizing.
+* Pixel data conversion for 32-bit texture formats. 
+* Non-blocking image loading and processing.
+
+Tested on Windows, Mac and Linux (including Raspberry Pi).
+
+# Requirements
+
+* Pixels, Please contains native code and requires a system with a proper C++ toolchain (node-gyp).
+
+# Install
 
 ```
 npm install --save pixels-please
@@ -17,6 +27,8 @@ yarn add pixels-please
 
 # Examples
 
+Asynchronously load image data into a Buffer.
+
 ```javascript
 const Pipeline = require('pixels-please');
 
@@ -28,11 +40,37 @@ Pipeline(imageFilename)
     });
 ```
 
+Synchronously load image data into a Buffer in 32 bit ARGB format.
+
 ```javascript
 const Pipeline = require('pixels-please');
 
 let buffer = Pipeline(imageFilename)
     .bytes({format: 'argb'})
+    .toBufferSync();
+```
+
+Read the image header for size information.
+
+```javascript
+const Pipeline = require('pixels-please');
+
+let header = Pipeline(imageFilename)
+    .toHeaderSync();
+
+console.log(`${header.width}x${header.height}`);
+```
+
+Resize an image to fit into a 100x100 bounding box, preserving aspect ratio.
+
+```javascript
+const Pipeline = require('pixels-please');
+
+let buffer = Pipeline(imageFilename)
+    .bytes()
+    .fit()
+    .filter('gaussian')
+    .resize(100, 100)
     .toBufferSync();
 ```
 
@@ -50,6 +88,7 @@ let buffer = Pipeline(imageFilename)
 | .pic | None |
 | .ppm | binary only |
 | .pgm | binary only |
+| .svg | Supports a subset of SVG, including shapes, paths, etc. |
 
 # License
 
