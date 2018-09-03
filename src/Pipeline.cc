@@ -96,7 +96,7 @@ void ConvertPixelsLE(unsigned char *bytes, int len, int bytesPerPixel, PixelForm
 void ConvertPixelsBE(unsigned char *bytes, int len, int bytesPerPixel, PixelFormat format);
 std::shared_ptr<Result> Pipeline(const std::shared_ptr<Request> request, const std::shared_ptr<ImageSource> imageSource);
 float ScaleFactor(const int source, const int dest);
-void AddBufferAllocation(void *bufferData)
+void AddBufferAllocation(void *bufferData);
 void ReleaseBufferAllocation(void *bufferData);
 
 // Internal Classes
