@@ -7,6 +7,8 @@
 
 #include "Pipeline.h"
 
+#include <set>
+
 #include "napi-thread-safe-callback.hpp"
 #include <cstdio>
 #include <cstring>
@@ -43,6 +45,7 @@ using namespace Napi;
 
 #define BUFFER_HEADER "header"
 #define BUFFER_EVENT_TYPE "data"
+#define BUFFER_RELEASE "release"
 
 #define REQUEST_OUTPUT "outputOptions"
 #define REQUEST_FORMAT "format"
@@ -70,6 +73,8 @@ enum PixelFormat {
     PIXEL_FORMAT_UNKNOWN = -1
 };
 
+static std::set<void *> sBufferAllocations;
+
 // Exported Functions
 
 void LoadPipeline(const CallbackInfo& info);
@@ -91,6 +96,8 @@ void ConvertPixelsLE(unsigned char *bytes, int len, int bytesPerPixel, PixelForm
 void ConvertPixelsBE(unsigned char *bytes, int len, int bytesPerPixel, PixelFormat format);
 std::shared_ptr<Result> Pipeline(const std::shared_ptr<Request> request, const std::shared_ptr<ImageSource> imageSource);
 float ScaleFactor(const int source, const int dest);
+void AddBufferAllocation(void *bufferData)
+void ReleaseBufferAllocation(void *bufferData);
 
 // Internal Classes
 
@@ -294,17 +301,23 @@ class BufferResult : public HeaderResult {
 
             header[HEADER_FORMAT] = String::New(env, PixelFormatToString(this->format));
 
+            auto bufferData = static_cast<void *>(this->pixels);
+
+            AddBufferAllocation(bufferData);
+
             auto buffer = Napi::Buffer<unsigned char>::New(
                  env,
                  this->pixels,
                  this->width*this->height*this->channels,
                  [](Env env, void* bufferData) {
-                     free(bufferData);
+                     ReleaseBufferAllocation(bufferData);
                  }
             );
 
             buffer.Set(BUFFER_HEADER, header);
-
+            buffer.Set(BUFFER_RELEASE, Function::New(env, [bufferData](const CallbackInfo& callbackInfo) {
+                ReleaseBufferAllocation(bufferData);
+            }));
             return buffer;
         }
 
@@ -668,6 +681,19 @@ void ConvertPixelsBE(unsigned char *bytes, int len, int bytesPerPixel, PixelForm
         }
 
         i += bytesPerPixel;
+    }
+}
+
+void AddBufferAllocation(void *bufferData) {
+    sBufferAllocations.insert(bufferData);
+}
+
+void ReleaseBufferAllocation(void *bufferData) {
+    auto it = sBufferAllocations.find(bufferData);
+
+    if (it != sBufferAllocations.end()) {
+        free(bufferData);
+        sBufferAllocations.erase(it);
     }
 }
 
